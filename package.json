@@ -1,0 +1,37 @@
+{
+  "name": "context-squeeze-mcp",
+  "version": "0.1.0",
+  "description": "MCP Context Optimizer & Token Saver written in Rust — saves up to 80% tokens on LLM context windows",
+  "main": "bin/cli.js",
+  "bin": {
+    "context-squeeze-mcp": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anilcan-kara/context-squeeze.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "context",
+    "claude",
+    "cursor",
+    "cline",
+    "agent",
+    "rust",
+    "ast",
+    "token-saver"
+  ],
+  "author": "Anilcan Kara",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/anilcan-kara/context-squeeze/issues"
+  },
+  "homepage": "https://github.com/anilcan-kara/context-squeeze#readme",
+  "engines": {
+    "node": ">=14"
+  }
+}
