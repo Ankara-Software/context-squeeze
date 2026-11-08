@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs;
 use ignore::WalkBuilder;
-use super::parser::{parse_file, Symbol};
+use super::parser::parse_file;
 
 pub struct Indexer {
     pub root_path: PathBuf,
