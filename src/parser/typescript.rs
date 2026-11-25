@@ -17,7 +17,8 @@ impl<'a> TypeScriptParser<'a> {
         let class_regex = Regex::new(r"(?:export\s+)?(?:default\s+)?class\s+(\w+)").unwrap();
         let interface_regex = Regex::new(r"(?:export\s+)?interface\s+(\w+)").unwrap();
         let type_regex = Regex::new(r"(?:export\s+)?type\s+(\w+)").unwrap();
-        let func_regex = Regex::new(r"(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+(\w+)").unwrap();
+        let func_regex =
+            Regex::new(r"(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+(\w+)").unwrap();
         let arrow_regex = Regex::new(r"(?:export\s+)?const\s+(\w+)\s*=\s*.*=>").unwrap();
 
         let mut i = 0;
@@ -59,7 +60,7 @@ impl<'a> TypeScriptParser<'a> {
                 let line_start = i + 1;
                 let signature = trim_line.to_string();
                 let mut line_end = i + 1;
-                
+
                 // For 'type' declarations, they might end with a semicolon on the same line or subsequent lines
                 if kind == "type" && !trim_line.contains('{') {
                     let mut j = i;
@@ -86,7 +87,7 @@ impl<'a> TypeScriptParser<'a> {
                     let mut brace_count = 0;
                     let mut opened = false;
                     let mut j = i;
-                    
+
                     while j < lines.len() {
                         let current = lines[j];
                         for c in current.chars() {

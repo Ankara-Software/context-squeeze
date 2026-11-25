@@ -14,7 +14,8 @@ impl<'a> PythonParser<'a> {
         let mut symbols = Vec::new();
         let lines: Vec<&str> = self.content.lines().collect();
         let class_regex = Regex::new(r"^\s*class\s+(\w+)(?:\s*\(([^)]*)\))?\s*:").unwrap();
-        let func_regex = Regex::new(r"^\s*def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*([^:]+))?\s*:").unwrap();
+        let func_regex =
+            Regex::new(r"^\s*def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*([^:]+))?\s*:").unwrap();
 
         let mut i = 0;
         while i < lines.len() {
@@ -29,7 +30,7 @@ impl<'a> PythonParser<'a> {
             let mut name = String::new();
             let mut kind = String::new();
             let mut signature = String::new();
-            let mut line_start = i + 1;
+            let line_start = i + 1;
 
             if let Some(caps) = class_regex.captures(line) {
                 matched = true;
@@ -47,7 +48,7 @@ impl<'a> PythonParser<'a> {
                 // Determine indentation of the match
                 let start_indent = line.len() - trim_line.len();
                 let mut line_end = i + 1;
-                
+
                 // Scan forward to find where the block ends based on indentation
                 let mut j = i + 1;
                 while j < lines.len() {
@@ -77,7 +78,7 @@ impl<'a> PythonParser<'a> {
                     line_start,
                     line_end,
                 });
-                
+
                 i = j - 1; // Advance loop
             }
             i += 1;

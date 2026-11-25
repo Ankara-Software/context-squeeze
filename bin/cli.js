@@ -6,21 +6,21 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 const https = require('https');
 
-const VERSION = '0.1.0';
-const REPO = 'anilcan-kara/context-squeeze';
+const VERSION = '0.1.1';
+const REPO = 'Ankara-Software/context-squeeze';
 
 function getTarget() {
     const platform = os.platform();
     const arch = os.arch();
 
     if (platform === 'linux') {
-        if (arch === 'x64') return { triple: 'x86_64-unknown-linux-musl', ext: 'tar.gz', bin: 'context-squeeze' };
-        if (arch === 'arm64') return { triple: 'aarch64-unknown-linux-musl', ext: 'tar.gz', bin: 'context-squeeze' };
+        if (arch === 'x64') return { asset: 'context-squeeze-linux-x64', bin: 'context-squeeze' };
+        if (arch === 'arm64') return { asset: 'context-squeeze-linux-arm64', bin: 'context-squeeze' };
     } else if (platform === 'darwin') {
-        if (arch === 'x64') return { triple: 'x86_64-apple-darwin', ext: 'tar.gz', bin: 'context-squeeze' };
-        if (arch === 'arm64') return { triple: 'aarch64-apple-darwin', ext: 'tar.gz', bin: 'context-squeeze' };
+        if (arch === 'x64') return { asset: 'context-squeeze-darwin-x64', bin: 'context-squeeze' };
+        if (arch === 'arm64') return { asset: 'context-squeeze-darwin-arm64', bin: 'context-squeeze' };
     } else if (platform === 'win32') {
-        if (arch === 'x64') return { triple: 'x86_64-pc-windows-msvc', ext: 'zip', bin: 'context-squeeze.exe' };
+        if (arch === 'x64') return { asset: 'context-squeeze-win32-x64.exe', bin: 'context-squeeze.exe' };
     }
     return null;
 }
@@ -28,28 +28,32 @@ function getTarget() {
 function downloadFile(url, destPath) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(destPath);
-        
+
         const request = (targetUrl) => {
             https.get(targetUrl, (response) => {
                 if (response.statusCode === 301 || response.statusCode === 302) {
                     request(response.headers.location);
                     return;
                 }
-                
+
                 if (response.statusCode !== 200) {
-                    reject(new Error(`Failed to download binary: HTTP ${response.statusCode}`));
+                    file.close(() => {
+                        fs.unlink(destPath, () => {});
+                        reject(new Error(`Failed to download binary: HTTP ${response.statusCode}`));
+                    });
                     return;
                 }
 
                 response.pipe(file);
-                
+
                 file.on('finish', () => {
-                    file.close();
-                    resolve();
+                    file.close(resolve);
                 });
             }).on('error', (err) => {
-                fs.unlink(destPath, () => {});
-                reject(err);
+                file.close(() => {
+                    fs.unlink(destPath, () => {});
+                    reject(err);
+                });
             });
         };
 
@@ -74,40 +78,27 @@ function main() {
         return;
     }
 
-    console.error(`context-squeeze binary not found locally. Downloading for ${target.triple}...`);
-    
+    console.error(`context-squeeze binary not found locally. Downloading v${VERSION} (${target.asset})...`);
+
     if (!fs.existsSync(installDir)) {
         fs.mkdirSync(installDir, { recursive: true });
     }
 
-    const archiveName = `context-squeeze-${target.triple}.${target.ext}`;
-    const archivePath = path.join(installDir, archiveName);
-    const downloadUrl = `https://github.com/${REPO}/releases/download/v${VERSION}/${archiveName}`;
+    const downloadUrl = `https://github.com/${REPO}/releases/download/v${VERSION}/${target.asset}`;
 
-    downloadFile(downloadUrl, archivePath)
+    downloadFile(downloadUrl, binPath)
         .then(() => {
-            console.error("Extracting archive...");
-            const tarResult = spawnSync('tar', ['-xf', archivePath, '-C', installDir]);
-            if (tarResult.status !== 0) {
-                throw new Error(`Failed to extract archive: ${tarResult.stderr.toString()}`);
+            if (os.platform() !== 'win32') {
+                try {
+                    fs.chmodSync(binPath, 0o755);
+                } catch (e) {}
             }
 
-            try {
-                fs.unlinkSync(archivePath);
-            } catch (e) {}
-
-            try {
-                fs.chmodSync(binPath, '755');
-            } catch (e) {}
-
-            console.error("Download and extraction complete.\n");
+            console.error("Download complete.\n");
             runBinary(binPath);
         })
         .catch((err) => {
             console.error(`Error: Failed to install binary: ${err.message}`);
-            try {
-                fs.unlinkSync(archivePath);
-            } catch (e) {}
             process.exit(1);
         });
 }
