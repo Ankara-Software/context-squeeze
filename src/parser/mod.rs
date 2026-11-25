@@ -1,9 +1,9 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-pub mod python;
-pub mod typescript;
-pub mod rust;
 pub mod go;
+pub mod python;
+pub mod rust;
+pub mod typescript;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Symbol {
@@ -13,10 +13,6 @@ pub struct Symbol {
     pub body: String,
     pub line_start: usize,
     pub line_end: usize,
-}
-
-pub trait Parser {
-    fn parse(&self) -> Vec<Symbol>;
 }
 
 pub fn parse_file(extension: &str, content: &str) -> Vec<Symbol> {

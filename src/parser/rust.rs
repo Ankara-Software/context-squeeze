@@ -18,7 +18,6 @@ impl<'a> RustParser<'a> {
         let enum_regex = Regex::new(r"(?:pub\s+)?enum\s+(\w+)").unwrap();
         let trait_regex = Regex::new(r"(?:pub\s+)?trait\s+(\w+)").unwrap();
         let fn_regex = Regex::new(r"(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)").unwrap();
-        let impl_regex = Regex::new(r"^impl(?:\s*<[^>]*>)?\s*(?:(?:\w+::)?\w+)?\s*(?:for\s+(\w+))?").unwrap();
 
         let mut i = 0;
         while i < lines.len() {
@@ -55,12 +54,12 @@ impl<'a> RustParser<'a> {
                 let line_start = i + 1;
                 let signature = trim_line.to_string();
                 let mut line_end = i + 1;
-                
+
                 // Rust brace counting
                 let mut brace_count = 0;
                 let mut opened = false;
                 let mut j = i;
-                
+
                 while j < lines.len() {
                     let current = lines[j];
                     for c in current.chars() {

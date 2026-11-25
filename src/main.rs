@@ -1,15 +1,16 @@
-use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::io::{self, BufRead, Write};
+use std::path::PathBuf;
 
-mod parser;
 mod indexer;
+mod parser;
 
 use indexer::Indexer;
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     id: Option<Value>,
     method: String,
@@ -24,12 +25,6 @@ struct JsonRpcResponse {
     result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<Value>,
-}
-
-#[derive(Debug, Serialize)]
-struct JsonRpcError {
-    code: i32,
-    message: String,
 }
 
 fn send_response(id: Option<Value>, result: Option<Value>, error: Option<Value>) {
@@ -68,7 +63,7 @@ fn handle_request(request: JsonRpcRequest) {
                 },
                 "serverInfo": {
                     "name": "context-squeeze",
-                    "version": "0.1.0"
+                    "version": env!("CARGO_PKG_VERSION")
                 }
             });
             send_response(id, Some(result), None);
@@ -142,12 +137,15 @@ fn handle_request(request: JsonRpcRequest) {
 
             match tool_name {
                 Some("get_repo_map") => {
-                    let target_path_str = arguments.get("path").and_then(|v| v.as_str()).unwrap_or(".");
+                    let target_path_str = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(".");
                     let target_path = PathBuf::from(target_path_str);
-                    
+
                     let indexer = Indexer::new(target_path);
                     let repo_map = indexer.build_repo_map();
-                    
+
                     let result = serde_json::json!({
                         "content": [
                             {
@@ -176,10 +174,16 @@ fn handle_request(request: JsonRpcRequest) {
 
                     let indexer = Indexer::new(PathBuf::from("."));
                     let body = indexer.get_symbol_body(file_path, symbol_name);
-                    
+
                     let text_response = match body {
-                        Some(code) => format!("Symbol: {} in file {}\n\n```\n{}\n```", symbol_name, file_path, code),
-                        None => format!("Symbol '{}' not found in file '{}'.", symbol_name, file_path),
+                        Some(code) => format!(
+                            "Symbol: {} in file {}\n\n```\n{}\n```",
+                            symbol_name, file_path, code
+                        ),
+                        None => format!(
+                            "Symbol '{}' not found in file '{}'.",
+                            symbol_name, file_path
+                        ),
                     };
 
                     let result = serde_json::json!({
@@ -203,7 +207,7 @@ fn handle_request(request: JsonRpcRequest) {
 
                     let indexer = Indexer::new(PathBuf::from("."));
                     let search_results = indexer.search_symbols(query);
-                    
+
                     let result = serde_json::json!({
                         "content": [
                             {

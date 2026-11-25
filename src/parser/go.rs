@@ -54,12 +54,12 @@ impl<'a> GoParser<'a> {
                 let line_start = i + 1;
                 let signature = trim_line.to_string();
                 let mut line_end = i + 1;
-                
+
                 // Go brace counting
                 let mut brace_count = 0;
                 let mut opened = false;
                 let mut j = i;
-                
+
                 while j < lines.len() {
                     let current = lines[j];
                     for c in current.chars() {

@@ -1,58 +1,122 @@
 name: Release
 
-permissions:
-  contents: write
-
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  create-release:
+  prepare:
+    name: Create draft release
     runs-on: [self-hosted, s31]
     steps:
-      - uses: actions/checkout@v4
-      - name: Create GitHub Release
-        uses: taiki-e/create-gh-release-action@v1
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
+          generate_release_notes: true
 
-  upload-assets:
-    needs: create-release
+  build:
+    name: Build - ${{ matrix.target }}
+    needs: prepare
+    runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-musl
-            os: linux
+          - os: linux
             runner: '["self-hosted","s31"]'
-          - target: aarch64-unknown-linux-musl
-            os: linux
+            target: x86_64-unknown-linux-gnu
+            asset_name: context-squeeze-linux-x64
+            cross_arm64: false
+          - os: linux
             runner: '["self-hosted","s31"]'
-          - target: x86_64-apple-darwin
-            os: macos
+            target: aarch64-unknown-linux-gnu
+            asset_name: context-squeeze-linux-arm64
+            cross_arm64: true
+          - os: macos
             runner: '["self-hosted","macOS","s11"]'
-          - target: aarch64-apple-darwin
-            os: macos
+            target: x86_64-apple-darwin
+            asset_name: context-squeeze-darwin-x64
+            cross_arm64: false
+          - os: macos
             runner: '["self-hosted","macOS","s11"]'
-          - target: x86_64-pc-windows-msvc
-            os: windows
+            target: aarch64-apple-darwin
+            asset_name: context-squeeze-darwin-arm64
+            cross_arm64: false
+          - os: windows
             runner: '["self-hosted","Windows","s18"]'
-    runs-on: ${{ fromJSON(matrix.runner) }}
+            target: x86_64-pc-windows-msvc
+            asset_name: context-squeeze-win32-x64.exe
+            cross_arm64: false
     steps:
-      - uses: actions/checkout@v4
-      - name: Install cross-compilation tools (linux)
-        if: contains(matrix.target, 'linux') && matrix.os == 'linux'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure rustup in PATH (Unix)
+        if: runner.os != 'Windows'
         run: |
-          if ! command -v musl-gcc >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y musl-tools
+          if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+            curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y --no-modify-path
           fi
-      - name: Upload Rust binary
-        uses: taiki-e/upload-rust-binary-action@v1
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Ensure rustup in PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          if [ -x "$USERPROFILE/.cargo/bin/rustup.exe" ]; then
+            echo "$USERPROFILE/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          bin: context-squeeze
-          target: ${{ matrix.target }}
-          tar: all
-          zip: always
-          token: ${{ secrets.GITHUB_TOKEN }}
+          targets: ${{ matrix.target }}
+
+      - name: Install arm64 cross-linker (Linux)
+        if: matrix.cross_arm64
+        run: |
+          if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          fi
+
+      - name: Build binary (Standard)
+        if: ${{ !matrix.cross_arm64 }}
+        run: cargo build --target ${{ matrix.target }} --release
+
+      - name: Build binary (Linux arm64)
+        if: matrix.cross_arm64
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+        run: cargo build --target ${{ matrix.target }} --release
+
+      - name: Prepare asset (Windows)
+        if: matrix.os == 'windows'
+        run: Move-Item -Force "target\${{ matrix.target }}\release\context-squeeze.exe" "${{ matrix.asset_name }}"
+
+      - name: Prepare asset (Unix)
+        if: matrix.os != 'windows'
+        run: mv -f "target/${{ matrix.target }}/release/context-squeeze" "${{ matrix.asset_name }}"
+
+      - name: Upload asset to draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          fail_on_unmatched_files: true
+          files: ${{ matrix.asset_name }}
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: [self-hosted, s31]
+    steps:
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          make_latest: true
